@@ -170,6 +170,10 @@ xcuserdata/
 tags
 cscope*
 *.lock
+.ssh
+.dotnet
+.gnupg
+.gitconfig
 
 # vim temporary files
 *.swp
@@ -210,6 +214,7 @@ cmake-build-debug
 
 # Visual Studio Code
 .vscode
+.vscode-server
 
 # tmp file
 .nfs*

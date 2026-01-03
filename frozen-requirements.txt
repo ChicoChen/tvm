@@ -1,0 +1,4 @@
+REPO_DIR: /home/shcchen/Code/tvm-0.18/tvm
+DOCKER CONTAINER NAME: tlcpack/ci-gpu:20240917-153130-9f281758
+
+Running 'bash --login /docker/with_the_same_user python3 -m pip install --quiet tlcpack-sphinx-addon==0.2.1 && python3 -m pip freeze' inside tlcpack/ci-gpu:20240917-153130-9f281758...

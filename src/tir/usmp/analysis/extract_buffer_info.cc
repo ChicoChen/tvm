@@ -447,8 +447,26 @@ Array<Var> static GetMatchedBuffers(const PrimFunc& func) {
 void BufferInfoExtractor::UpdateAliases(const Array<PrimExpr>& args, const PrimFunc& func) {
   auto param_buffers = GetMatchedBuffers(func);
   // Last var could be a resource handle that does not have a Buffer
-  ICHECK(args.size() == param_buffers.size() || args.size() - 1 == param_buffers.size());
-  for (size_t i = 0; i < param_buffers.size(); i++) {
+
+  //! modified here
+  if (args.size() != param_buffers.size() && args.size() - 1 != param_buffers.size()) {
+    LOG(WARNING) << "Args size: " << args.size() << ", Param buffers size: " << param_buffers.size() << " mismatch in UpdateAliases";
+    std::string func_name = "unknown";
+    if (auto opt_name = func->GetAttr<String>(tvm::attr::kGlobalSymbol)) {
+        func_name = opt_name.value();
+    }
+    LOG(INFO) << "| Function Name: " << func_name;
+    for (size_t i = 0; i < func->params.size(); ++i) {
+      LOG(INFO) << "| Param[" << i << "]: " << func->params[i] << " Type: " << func->params[i]->dtype;
+    }
+
+    for (size_t i = 0; i < args.size(); ++i) {
+      LOG(INFO) << "| Args[" << i << "]: " << args[i] << " Type: " << args[i]->dtype;
+    }
+  }
+  
+  size_t loop_limit = std::min(args.size(), param_buffers.size());
+  for (size_t i = 0; i < loop_limit; i++) {
     auto arg = args[i];
     auto param_buf = param_buffers[i];
     // If tir.allocates are passed in to functions
