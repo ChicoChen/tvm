@@ -115,7 +115,8 @@ def pattern_table():
             is_constant(),
             is_constant(),
         )
-        bias_add = is_op("nn.bias_add")(qnn_conv2d, is_constant())
+        #! modified here
+        bias_add = is_op("nn.bias_add")(qnn_conv2d, wildcard())
         req = is_op("qnn.requantize")(
             qnn_conv2d | bias_add, is_constant(), is_constant(), is_constant(), is_constant()
         )
