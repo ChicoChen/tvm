@@ -621,6 +621,47 @@ class Concat(OnnxOpConverter):
         return relax.op.concat(inputs, axis=axis)
 
 
+class QuantizeLinear(OnnxOpConverter):
+    """Convert an onnx QuantizeLinear node into an equivalent Relax expression."""
+
+    @classmethod
+    def _impl_v13(cls, bb, inputs, attr, params):
+        data = inputs[0]
+        scale = inputs[1]
+        zero_point = inputs[2] if len(inputs) > 2 else None
+        axis = attr.get("axis", 1)
+
+        if zero_point is None:
+            zero_point = relax.const(0, "uint8")
+
+        # Infer output type from zero_point
+        out_dtype = "uint8"
+        if isinstance(zero_point, relax.Constant):
+            out_dtype = str(zero_point.data.dtype)
+        elif hasattr(zero_point, "struct_info") and hasattr(
+            zero_point.struct_info, "dtype"
+        ):
+            out_dtype = str(zero_point.struct_info.dtype)
+
+        return relax.op.quantize(data, scale, zero_point, axis, out_dtype)
+
+
+class DequantizeLinear(OnnxOpConverter):
+    """Convert an onnx DequantizeLinear node into an equivalent Relax expression."""
+
+    @classmethod
+    def _impl_v13(cls, bb, inputs, attr, params):
+        data = inputs[0]
+        scale = inputs[1]
+        zero_point = inputs[2] if len(inputs) > 2 else None
+        axis = attr.get("axis", 1)
+
+        if zero_point is None:
+            zero_point = relax.const(0, "uint8")
+
+        return relax.op.dequantize(data, scale, zero_point, axis)
+
+
 class Cast(OnnxOpConverter):
     """Convert an onnx Cast node into an equivalent Relax expression."""
 
@@ -2862,6 +2903,8 @@ def _get_convert_map():
         "Max": Max,
         "Mean": Mean,
         "Cast": Cast,
+        "QuantizeLinear": QuantizeLinear,
+        "DequantizeLinear": DequantizeLinear,
         "Gemm": Gemm,
         "MatMul": MatMul,
         # "MatMulInteger": MatMulInteger,

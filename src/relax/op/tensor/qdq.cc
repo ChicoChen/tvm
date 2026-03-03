@@ -75,9 +75,11 @@ StructInfo InferStructInfoQuantize(const Call& call, const BlockBuilder& ctx) {
   }
 
   // Check datatype of zero_point param:
-  if (zp_sinfo->dtype != DataType::Int(8) && zp_sinfo->dtype != DataType::Float(16)) {
+  if (zp_sinfo->dtype != DataType::Int(8) && zp_sinfo->dtype != DataType::UInt(8) && 
+      zp_sinfo->dtype != DataType::Int(16) && zp_sinfo->dtype != DataType::UInt(16) &&
+      zp_sinfo->dtype != DataType::Float(16)) {
     ctx->ReportFatal(Diagnostic::Error(call)
-                     << "zero_point param datatype should be 'int8' or 'float16', but got "
+                     << "zero_point param datatype should be 'int8', 'uint8', 'int16', 'uint16' or 'float16', but got "
                      << zp_sinfo->dtype);
   }
 
@@ -160,9 +162,11 @@ StructInfo InferStructInfoDequantize(const Call& call, const BlockBuilder& ctx) 
   }
 
   // Check datatype of zero_point param:
-  if (zp_sinfo->dtype != DataType::Int(8) && zp_sinfo->dtype != DataType::Float(16)) {
+  if (zp_sinfo->dtype != DataType::Int(8) && zp_sinfo->dtype != DataType::UInt(8) &&
+      zp_sinfo->dtype != DataType::Int(16) && zp_sinfo->dtype != DataType::UInt(16) &&
+      zp_sinfo->dtype != DataType::Float(16)) {
     ctx->ReportFatal(Diagnostic::Error(call)
-                     << "zero_point param datatype should be 'int8' or 'float16', but got "
+                     << "zero_point param datatype should be 'int8', 'uint8', 'int16', 'uint16' or 'float16', but got "
                      << zp_sinfo->dtype);
   }
 
