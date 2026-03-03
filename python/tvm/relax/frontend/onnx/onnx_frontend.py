@@ -1429,17 +1429,37 @@ class MultiInputBase(OnnxOpConverter):
 
     numpy_op: Callable = None
     relax_op: Callable = None
+    binary_numpy_op: Callable = None
+    binary_relax_op: Callable = None
 
     @classmethod
     def _impl_v1(cls, bb, inputs, attr, params):
         if cls.numpy_op is None or cls.relax_op is None:
             raise NotImplementedError("numpy_op and relax_op must be defined for MultiInputBase")
         if all([isinstance(inp, relax.Constant) for inp in inputs]):
+            import functools
+
             np_inputs = [inp.data.numpy() for inp in inputs]
-            output = cls.numpy_op(*np_inputs)  # pylint: disable=not-callable
+            if cls.numpy_op is not None and len(np_inputs) == 1:
+                output = cls.numpy_op(np_inputs[0])  # pylint: disable=not-callable
+            elif cls.binary_numpy_op is not None:
+                output = functools.reduce(
+                    cls.binary_numpy_op, np_inputs  # pylint: disable=not-callable
+                )
+            else:
+                output = cls.numpy_op(*np_inputs)  # pylint: disable=not-callable
             return relax.const(output, output.dtype)
 
-        # Expand inputs, stack them, then perform minimum over the new axis.
+        # Use iterative element-wise binary op to support broadcasting across
+        # inputs with different ndims (e.g. a 3-D tensor and a scalar constant).
+        if cls.binary_relax_op is not None:
+            result = inputs[0]
+            for inp in inputs[1:]:
+                result = cls.binary_relax_op(result, inp)  # pylint: disable=not-callable
+            return result
+
+        # Fallback: expand inputs, stack them, then perform reduction over the
+        # new axis.  This only works when all inputs share the same ndim.
         inputs = [bb.normalize(relax.op.expand_dims(i, axis=0)) for i in inputs]
         stacked_tensor = relax.op.concat(inputs, axis=0)
         return cls.relax_op(stacked_tensor, axis=0)  # pylint: disable=not-callable
@@ -1448,15 +1468,19 @@ class MultiInputBase(OnnxOpConverter):
 class Min(MultiInputBase):
     """Converts an onnx Min node into an equivalent Relax expression."""
 
-    numpy_op = _np.min
+    numpy_op = _np.minimum
     relax_op = relax.op.min
+    binary_numpy_op = _np.minimum
+    binary_relax_op = relax.op.minimum
 
 
 class Max(MultiInputBase):
     """Converts an onnx Max node into an equivalent Relax expression."""
 
-    numpy_op = _np.max
+    numpy_op = _np.maximum
     relax_op = relax.op.max
+    binary_numpy_op = _np.maximum
+    binary_relax_op = relax.op.maximum
 
 
 class Mean(MultiInputBase):
@@ -1471,6 +1495,8 @@ class Sum(MultiInputBase):
 
     numpy_op = _np.sum
     relax_op = relax.op.sum
+    binary_numpy_op = _np.add
+    binary_relax_op = relax.op.add
 
 
 class Log(OnnxOpConverter):
