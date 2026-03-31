@@ -49,6 +49,14 @@
         "vid_hex": "0483",
         "pid_hex": "374b"
     },
+    "nucleo_f767zi": {
+        "board": "nucleo_f767zi",
+        "model": "stm32f767xx",
+        "is_qemu": false,
+        "fpu": true,
+        "vid_hex": "0483",
+        "pid_hex": "374b"
+    },
     "nucleo_l4r5zi": {
         "board": "nucleo_l4r5zi",
         "model": "stm32l4r5zi",
