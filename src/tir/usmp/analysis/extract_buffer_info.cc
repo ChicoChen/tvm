@@ -432,7 +432,12 @@ Array<Var> static GetMatchedBuffers(const PrimFunc& func) {
   if (func->params.size() > 0) {
     for (unsigned int i = 0; i < func->params.size() - 1; i++) {
       Var param = func->params[i];
-      buffer_vars.push_back(func->buffer_map[param]->data);
+      auto it = func->buffer_map.find(param);
+      if (it != func->buffer_map.end()) {
+        buffer_vars.push_back((*it).second->data);
+      } else {
+        LOG(FATAL) << "Function parameter " << param << " not found in buffer_map of " << func->GetAttr<String>(tvm::attr::kGlobalSymbol).value_or("unknown");
+      }
     }
     Var last_param = func->params.back();
     // Checks whether last var is present in the buffer map
@@ -445,33 +450,17 @@ Array<Var> static GetMatchedBuffers(const PrimFunc& func) {
 }
 
 void BufferInfoExtractor::UpdateAliases(const Array<PrimExpr>& args, const PrimFunc& func) {
-  auto param_buffers = GetMatchedBuffers(func);
-  // Last var could be a resource handle that does not have a Buffer
-
-  //! modified here
-  if (args.size() != param_buffers.size() && args.size() - 1 != param_buffers.size()) {
-    LOG(WARNING) << "Args size: " << args.size() << ", Param buffers size: " << param_buffers.size() << " mismatch in UpdateAliases";
-    std::string func_name = "unknown";
-    if (auto opt_name = func->GetAttr<String>(tvm::attr::kGlobalSymbol)) {
-        func_name = opt_name.value();
-    }
-    LOG(INFO) << "| Function Name: " << func_name;
-    for (size_t i = 0; i < func->params.size(); ++i) {
-      LOG(INFO) << "| Param[" << i << "]: " << func->params[i] << " Type: " << func->params[i]->dtype;
-    }
-
-    for (size_t i = 0; i < args.size(); ++i) {
-      LOG(INFO) << "| Args[" << i << "]: " << args[i] << " Type: " << args[i]->dtype;
-    }
-  }
-  
-  size_t loop_limit = std::min(args.size(), param_buffers.size());
+  size_t loop_limit = std::min(args.size(), func->params.size());
   for (size_t i = 0; i < loop_limit; i++) {
     auto arg = args[i];
-    auto param_buf = param_buffers[i];
+    auto param = func->params[i];
+    auto it = func->buffer_map.find(param);
+    if (it == func->buffer_map.end()) {
+      continue; // Skip scalar parameters
+    }
+    auto param_buf = (*it).second->data;;
     // If tir.allocates are passed in to functions
-    // The function params are re-directed to point
-    // to the original allocate
+    // The function params are re-directed to the original allocate
     if (arg->IsInstance<VarNode>()) {
       auto var = Downcast<Var>(arg);
       if (allocate_infos.count(var)) {

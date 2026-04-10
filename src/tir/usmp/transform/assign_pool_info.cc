@@ -130,7 +130,7 @@ WorkspacePoolInfo PoolInfoAssigner::CreateDefaultWorkspaceMemoryPool(const tvm::
 
 Stmt PoolInfoAssigner::VisitStmt_(const AllocateNode* op) {
   Optional<Target> tgt = func_->GetAttr<Target>(tvm::attr::kTarget).value();
-  ICHECK(tgt) << "The following PrimFunc does not have a target attr: \n" << func_;
+    ICHECK(tgt) << "The following PrimFunc does not have a target attr: \n" << func_;
   Map<String, ObjectRef> annotations = Map<String, ObjectRef>(op->annotations);
   if (op->annotations.find(kPoolCandidatesAllocateAttr) == op->annotations.end()) {
     ICHECK(target_pool_infos_.count(tgt.value()->str()) > 0)
@@ -149,14 +149,20 @@ Stmt PoolInfoAssigner::VisitStmt_(const AllocateConstNode* op) {
   }
   Optional<Target> tgt = func_->GetAttr<Target>(tvm::attr::kTarget).value();
   ICHECK(tgt) << "The following PrimFunc does not have a target attr: \n" << func_;
-  Map<String, ObjectRef> annotations = Map<String, ObjectRef>(op->annotations);
-  if (op->annotations.find(kPoolCandidatesAllocateAttr) == op->annotations.end()) {
+  Map<String, ObjectRef> annotations = op->annotations.defined() ? op->annotations : Map<String, ObjectRef>();
+  if (annotations.find(kPoolCandidatesAllocateAttr) == annotations.end()) {
     annotations.Set(kPoolCandidatesAllocateAttr, target_const_pool_infos_[tgt.value()->str()]);
     annotations.Set(kTargetPoolReadOnlyAccess, Integer(1));
   }
   Stmt body = VisitStmt(op->body);
+  ObjectRef data_or_idx;
+  if (op->data.defined()) {
+    data_or_idx = op->data.value();
+  } else if (op->irmod_storage_idx.defined()) {
+    data_or_idx = op->irmod_storage_idx.value();
+  }
   auto allocate_const =
-      AllocateConst(op->buffer_var, op->dtype, op->extents, op->data, body, annotations);
+      AllocateConst(op->buffer_var, op->dtype, op->extents, data_or_idx, body, annotations);
   return std::move(allocate_const);
 }
 
