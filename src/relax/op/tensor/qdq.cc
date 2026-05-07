@@ -77,15 +77,15 @@ StructInfo InferStructInfoQuantize(const Call& call, const BlockBuilder& ctx) {
   // Check datatype of zero_point param:
   if (zp_sinfo->dtype != DataType::Int(8) && zp_sinfo->dtype != DataType::UInt(8) && 
       zp_sinfo->dtype != DataType::Int(16) && zp_sinfo->dtype != DataType::UInt(16) &&
-      zp_sinfo->dtype != DataType::Float(16)) {
+      zp_sinfo->dtype != DataType::Float(16) && zp_sinfo->dtype != DataType::Int(32)) {
     ctx->ReportFatal(Diagnostic::Error(call)
-                     << "zero_point param datatype should be 'int8', 'uint8', 'int16', 'uint16' or 'float16', but got "
+                     << "zero_point param datatype should be 'int8', 'uint8', 'int16', 'uint16', 'float16' or 'int32', but got "
                      << zp_sinfo->dtype);
   }
 
   // Check that "axis" attribute is not out of range:
   int axis = (attrs->axis < 0) ? (input_sinfo->ndim + attrs->axis) : attrs->axis;
-  if (axis < 0 || axis > input_sinfo->ndim - 1) {
+  if ((!IsScalarTensor(scale_sinfo) || !IsScalarTensor(zp_sinfo)) && (axis < 0 || axis > input_sinfo->ndim - 1)) {
     ctx->ReportFatal(Diagnostic::Error(call)
                      << "relax.quantize: axis param is out of range (" << attrs->axis << ")");
   }
@@ -164,15 +164,15 @@ StructInfo InferStructInfoDequantize(const Call& call, const BlockBuilder& ctx) 
   // Check datatype of zero_point param:
   if (zp_sinfo->dtype != DataType::Int(8) && zp_sinfo->dtype != DataType::UInt(8) &&
       zp_sinfo->dtype != DataType::Int(16) && zp_sinfo->dtype != DataType::UInt(16) &&
-      zp_sinfo->dtype != DataType::Float(16)) {
+      zp_sinfo->dtype != DataType::Float(16) && zp_sinfo->dtype != DataType::Int(32)) {
     ctx->ReportFatal(Diagnostic::Error(call)
-                     << "zero_point param datatype should be 'int8', 'uint8', 'int16', 'uint16' or 'float16', but got "
+                     << "zero_point param datatype should be 'int8', 'uint8', 'int16', 'uint16', 'float16' or 'int32', but got "
                      << zp_sinfo->dtype);
   }
 
   // Check that "axis" attribute is not out of range:
   int axis = (attrs->axis < 0) ? (input_sinfo->ndim + attrs->axis) : attrs->axis;
-  if (axis < 0 || axis > input_sinfo->ndim - 1) {
+  if ((!IsScalarTensor(scale_sinfo) || !IsScalarTensor(zp_sinfo)) && (axis < 0 || axis > input_sinfo->ndim - 1)) {
     ctx->ReportFatal(Diagnostic::Error(call)
                      << "relax.dequantize: axis param is out of range (" << attrs->axis << ")");
   }

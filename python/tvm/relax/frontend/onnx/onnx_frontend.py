@@ -634,6 +634,22 @@ class QuantizeLinear(OnnxOpConverter):
         if zero_point is None:
             zero_point = relax.const(0, "uint8")
 
+        ndim = -1
+        if hasattr(data, "struct_info") and hasattr(data.struct_info, "ndim"):
+            ndim = data.struct_info.ndim
+        if ndim >= 0 and axis >= ndim:
+            axis = ndim - 1 if ndim > 0 else 0
+
+        # Handle 1-element scale/zp arrays that act as scalars
+        if hasattr(scale, "struct_info") and hasattr(scale.struct_info, "shape") and scale.struct_info.shape:
+            shape = [int(dim) for dim in scale.struct_info.shape]
+            if len(shape) == 1 and shape[0] == 1:
+                scale = relax.op.reshape(scale, [])
+        if hasattr(zero_point, "struct_info") and hasattr(zero_point.struct_info, "shape") and zero_point.struct_info.shape:
+            shape = [int(dim) for dim in zero_point.struct_info.shape]
+            if len(shape) == 1 and shape[0] == 1:
+                zero_point = relax.op.reshape(zero_point, [])
+
         # Infer output type from zero_point
         out_dtype = "uint8"
         if isinstance(zero_point, relax.Constant):
@@ -658,6 +674,22 @@ class DequantizeLinear(OnnxOpConverter):
 
         if zero_point is None:
             zero_point = relax.const(0, "uint8")
+
+        ndim = -1
+        if hasattr(data, "struct_info") and hasattr(data.struct_info, "ndim"):
+            ndim = data.struct_info.ndim
+        if ndim >= 0 and axis >= ndim:
+            axis = ndim - 1 if ndim > 0 else 0
+
+        # Handle 1-element scale/zp arrays that act as scalars
+        if hasattr(scale, "struct_info") and hasattr(scale.struct_info, "shape") and scale.struct_info.shape:
+            shape = [int(dim) for dim in scale.struct_info.shape]
+            if len(shape) == 1 and shape[0] == 1:
+                scale = relax.op.reshape(scale, [])
+        if hasattr(zero_point, "struct_info") and hasattr(zero_point.struct_info, "shape") and zero_point.struct_info.shape:
+            shape = [int(dim) for dim in zero_point.struct_info.shape]
+            if len(shape) == 1 and shape[0] == 1:
+                zero_point = relax.op.reshape(zero_point, [])
 
         return relax.op.dequantize(data, scale, zero_point, axis)
 
@@ -2283,22 +2315,38 @@ class ReduceMax(OnnxOpConverter):
     """Converts an onnx ReduceMax node into an equivalent Relax expression."""
 
     @classmethod
-    def _impl_v11(cls, bb, inputs, attr, params):
+    def _impl_v13(cls, bb, inputs, attr, params):
         data = inputs[0]
         axes = attr.get("axes", None)
+        if len(inputs) > 1 and inputs[1] is not None:
+            if not isinstance(inputs[1], relax.Constant):
+                raise ValueError("Only constant axes currently supported.")
+            axes = inputs[1].data.numpy().tolist()
         keepdims = attr.get("keepdims", 1)
         return relax.op.max(data, axes, keepdims)
+
+    @classmethod
+    def _impl_v18(cls, bb, inputs, attr, params):
+        return cls._impl_v13(bb, inputs, attr, params)
 
 
 class ReduceMin(OnnxOpConverter):
     """Converts an onnx ReduceMin node into an equivalent Relax expression."""
 
     @classmethod
-    def _impl_v11(cls, bb, inputs, attr, params):
+    def _impl_v13(cls, bb, inputs, attr, params):
         data = inputs[0]
         axes = attr.get("axes", None)
+        if len(inputs) > 1 and inputs[1] is not None:
+            if not isinstance(inputs[1], relax.Constant):
+                raise ValueError("Only constant axes currently supported.")
+            axes = inputs[1].data.numpy().tolist()
         keepdims = attr.get("keepdims", 1)
         return relax.op.min(data, axes, keepdims)
+
+    @classmethod
+    def _impl_v18(cls, bb, inputs, attr, params):
+        return cls._impl_v13(bb, inputs, attr, params)
 
 
 class ReduceSum(OnnxOpConverter):
@@ -2328,8 +2376,16 @@ class ReduceMean(OnnxOpConverter):
     def _impl_v13(cls, bb, inputs, attr, params):
         data = inputs[0]
         axes = attr.get("axes", None)
+        if len(inputs) > 1 and inputs[1] is not None:
+            if not isinstance(inputs[1], relax.Constant):
+                raise ValueError("Only constant axes currently supported.")
+            axes = inputs[1].data.numpy().tolist()
         keepdims = attr.get("keepdims", 1)
         return relax.op.mean(data, axes, keepdims)
+
+    @classmethod
+    def _impl_v18(cls, bb, inputs, attr, params):
+        return cls._impl_v13(bb, inputs, attr, params)
 
 
 class ReduceProd(OnnxOpConverter):
@@ -2339,8 +2395,16 @@ class ReduceProd(OnnxOpConverter):
     def _impl_v13(cls, bb, inputs, attr, params):
         data = inputs[0]
         axes = attr.get("axes", None)
+        if len(inputs) > 1 and inputs[1] is not None:
+            if not isinstance(inputs[1], relax.Constant):
+                raise ValueError("Only constant axes currently supported.")
+            axes = inputs[1].data.numpy().tolist()
         keepdims = attr.get("keepdims", 1)
         return relax.op.prod(data, axes, keepdims)
+
+    @classmethod
+    def _impl_v18(cls, bb, inputs, attr, params):
+        return cls._impl_v13(bb, inputs, attr, params)
 
 
 class ReduceLogSumExp(OnnxOpConverter):
