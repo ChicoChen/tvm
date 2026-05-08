@@ -1614,7 +1614,7 @@ class Split(OnnxOpConverter):
                 indices = []
                 index = 0
                 for i in splits[:-1]:
-                    index += i
+                    index += int(i)
                     indices.append(index)
             else:
                 raise ValueError("Dynamic Split not yet supported")
